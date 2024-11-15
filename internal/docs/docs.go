@@ -42,14 +42,11 @@ const (
 	MetadataFileName       = "metadata.json"
 )
 
-func New(repoPath string, commitHash string, llmClient LLMClient) (*Generator, error) {
-	// Construct path: ~/.repocontext/username/repo/versions/commit_hash/docs
-	docsPath := filepath.Join(
-		filepath.Dir(repoPath), // gets to username/repo
-		"versions",
-		commitHash,
-		"docs",
-	)
+func New(repoPath string, commitHash string, tag string, llmClient LLMClient) (*Generator, error) {
+	// repoPath is the src directory, go up one level to get the version directory
+	versionDir := filepath.Dir(repoPath)
+	docsPath := filepath.Join(versionDir, "docs")
+
 	if err := os.MkdirAll(docsPath, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create docs directory: %w", err)
 	}
@@ -61,8 +58,6 @@ func New(repoPath string, commitHash string, llmClient LLMClient) (*Generator, e
 		Files:     make(map[string]string),
 	}, nil
 }
-
-// In internal/docs/docs.go, update the signature:
 
 func (g *Generator) LoadOrGenerateDocs(files map[string]*git.RepoFile, meta *Metadata) error {
 	if g.isCacheValid() {

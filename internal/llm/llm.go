@@ -93,7 +93,7 @@ Current repository structure:
 %s
 
 Please select the most important files to include in the analysis. Prioritize:
-1. Documentation files (*.md, docs/*, etc.)
+1. Documentation files in English (*.md, *.mdx, docs/*, etc.)
 2. Key configuration files (go.mod, package.json, etc.)
 3. Main source files that demonstrate the core functionality
 4. README and LICENSE files

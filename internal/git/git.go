@@ -133,38 +133,66 @@ func ParseRepoPath(path string) (*Repository, error) {
 	}, nil
 }
 
-// git.go
-func (r *Repository) Clone() error {
+func (r *Repository) Clone() (string, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		return fmt.Errorf("could not get home directory: %w", err)
+		return "", fmt.Errorf("could not get home directory: %w", err)
 	}
 
-	r.Path = filepath.Join(homeDir, ".repocontext", r.User, r.Repo)
+	// Use tag if provided, otherwise use "main"
+	versionIdentifier := "main"
+	if r.Tag != "" {
+		versionIdentifier = r.Tag
+	}
+
+	// Full path including version
+	basePath := filepath.Join(homeDir, ".repocontext", r.User, r.Repo, versionIdentifier)
+	srcPath := filepath.Join(basePath, "src")
+	r.Path = basePath
 
 	// Check if repository already exists
-	if _, err := os.Stat(r.Path); err == nil {
-		fmt.Printf("Repository already exists at %s, using existing clone\n", r.Path)
-		return nil
+	if _, err := os.Stat(srcPath); err == nil {
+		fmt.Printf("Repository exists at %s, updating...\n", srcPath)
+		repo, err := git.PlainOpen(srcPath)
+		if err != nil {
+			return "", fmt.Errorf("failed to open repository: %w", err)
+		}
+
+		// Get the worktree
+		w, err := repo.Worktree()
+		if err != nil {
+			return "", fmt.Errorf("failed to get worktree: %w", err)
+		}
+
+		// Pull the latest changes
+		err = w.Pull(&git.PullOptions{
+			Force:      true,
+			RemoteName: "origin",
+		})
+		if err != nil && err != git.NoErrAlreadyUpToDate {
+			return "", fmt.Errorf("failed to pull repository: %w", err)
+		}
+
+		return srcPath, nil
 	}
 
-	if err := os.MkdirAll(r.Path, 0755); err != nil {
-		return fmt.Errorf("could not create repository directory: %w", err)
+	// Clone new repository
+	if err := os.MkdirAll(srcPath, 0755); err != nil {
+		return "", fmt.Errorf("could not create repository directory: %w", err)
 	}
 
 	url := fmt.Sprintf("https://github.com/%s/%s.git", r.User, r.Repo)
-	_, err = git.PlainClone(r.Path, false, &git.CloneOptions{
+	_, err = git.PlainClone(srcPath, false, &git.CloneOptions{
 		URL:      url,
 		Progress: os.Stdout,
-		Depth:    1, // Ensure shallow clone
+		Depth:    1,
 	})
 	if err != nil {
-		// Clean up the directory if clone fails
-		os.RemoveAll(r.Path)
-		return fmt.Errorf("could not clone repository: %w", err)
+		os.RemoveAll(srcPath)
+		return "", fmt.Errorf("could not clone repository: %w", err)
 	}
 
-	return nil
+	return srcPath, nil
 }
 
 func (r *Repository) GetFiles() (map[string]*RepoFile, error) {
@@ -235,7 +263,8 @@ func (r *Repository) ReadFileContents(files map[string]*RepoFile) error {
 }
 
 func (r *Repository) GetCurrentCommitHash() (string, error) {
-	repo, err := git.PlainOpen(r.Path)
+	srcPath := filepath.Join(r.Path, "src")
+	repo, err := git.PlainOpen(srcPath)
 	if err != nil {
 		return "", fmt.Errorf("failed to open repository: %w", err)
 	}

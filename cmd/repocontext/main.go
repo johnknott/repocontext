@@ -41,11 +41,12 @@ func main() {
 	}
 
 	fmt.Printf("Cloning/updating repository %s/%s...\n", repo.User, repo.Repo)
-	if err := repo.Clone(); err != nil {
+	repoPath, err = repo.Clone()
+	if err != nil {
 		log.Fatal(err)
 	}
 
-	fmt.Printf("Repository available at: %s\n", repo.Path)
+	fmt.Printf("Repository available at: %s\n", repoPath)
 
 	// Get commit hash
 	commitHash, err := repo.GetCurrentCommitHash()
@@ -78,7 +79,7 @@ func main() {
 	}
 
 	// Initialize documentation generator with versioned path
-	docGen, err := docs.New(repo.Path, commitHash, client)
+	docGen, err := docs.New(repo.Path, commitHash, repo.Tag, client)
 	if err != nil {
 		log.Fatal(err)
 	}
