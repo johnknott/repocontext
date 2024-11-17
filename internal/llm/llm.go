@@ -87,26 +87,30 @@ func (c *Client) SelectFiles(files map[string]*git.RepoFile, maxSize int) ([]str
 
 	fileInfo := formatFilesForPrompt(files)
 
-	prompt := fmt.Sprintf(`You are helping select the most important files from a repository to analyze, with a maximum total size of %d bytes.
-Current repository structure:
+	prompt := fmt.Sprintf(`You are selecting the most important files to understand a software project, within %d bytes limit.
 
+Repository structure:
 %s
 
-Please select the most important files to include in the analysis. Prioritize:
-1. Documentation files in English (*.md, *.mdx, docs/*, etc.)
-2. Key configuration files (go.mod, package.json, etc.)
-3. Main source files that demonstrate the core functionality
-4. README and LICENSE files
+Select files that help understand:
+1. What the project does and its core functionality (especially README.md and any other english language documentation)
+2. How to use/integrate the project - Especially tutorials and guides
+3. Key configuration needed to make it work
+4. Main implementation details, focusing on:
+   - Entry points
+   - Core logic
+   - Public APIs/interfaces
+   - Configuration options
 
-Ignore:
-1. Binary files
-2. Test files (unless they serve as good examples)
-3. Build artifacts
-4. Dependency directories (node_modules, vendor, etc.)
+Avoid files that are:
+1. Duplicates (translations, versions)
+2. Supporting files (tests, examples, licenses)
+3. Build artifacts and dependencies
+4. Auxiliary documentation (contribution guides, changelogs)
 
-Format your response as a simple list of file paths, one per line.
-Ensure the total size of selected files stays under %d bytes.
-Reply ONLY with the list of files, in order of priority, nothing else.`, maxSize, fileInfo, maxSize)
+Format: One filepath per line
+Stay under %d bytes total size
+Reply ONLY with filepaths.`, maxSize, fileInfo, maxSize)
 
 	ctx := context.Background()
 
